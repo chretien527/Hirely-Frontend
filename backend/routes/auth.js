@@ -4,6 +4,8 @@ const a = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 r1.post('/register', a.register);
 r1.post('/login', a.login);
+r1.post('/request-email-code', a.requestEmailCode);
+r1.post('/verify-email-code', a.verifyEmailCode);
 r1.get('/me', protect, a.getMe);
 r1.put('/profile', protect, a.updateProfile);
 module.exports = r1;

@@ -6,6 +6,10 @@ import { ThemeToggle, Avatar, ToastProvider } from '../ui';
 import Link from 'next/link';
 
 const NAV = [
+  { href: '/feed', label: 'Feed', icon: <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 4h12v2H2zm0 4h8v2H2z" /></svg> },
+  { href: '/network', label: 'Network', icon: <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 7a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm6 1a2 2 0 100-4 2 2 0 000 4zM1 13c0-2.2 2.7-4 6-4s6 1.8 6 4v1H1zm10.5-3c1.9.2 3.5 1.3 3.5 3v1h-2v-1c0-.8-.5-1.5-1.5-2z" /></svg> },
+  { href: '/messages', label: 'Messages', icon: <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H6l-4 3V4a1 1 0 011-1z" /></svg> },
+  { href: '/talent', label: 'Talent Hub', icon: <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z" /></svg> },
   { href: '/dashboard', label: 'Dashboard', icon: <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1" /><rect x="9" y="1" width="6" height="6" rx="1" /><rect x="1" y="9" width="6" height="6" rx="1" /><rect x="9" y="9" width="6" height="6" rx="1" /></svg> },
   { href: '/jobs', label: 'Job Listings', icon: <svg viewBox="0 0 16 16" fill="currentColor"><path d="M14 5H2a1 1 0 00-1 1v7a1 1 0 001 1h12a1 1 0 001-1V6a1 1 0 00-1-1zm-1 7H3V7h10v5zM5 5V3a1 1 0 011-1h4a1 1 0 011 1v2H9V4H7v1H5z" /></svg> },
   { href: '/screener', label: 'AI Screener', icon: <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12.5a5.5 5.5 0 110-11 5.5 5.5 0 010 11zm0-9a.75.75 0 01.75.75v3.5l2.1 1.2a.75.75 0 01-.75 1.3l-2.5-1.44A.75.75 0 017.25 9V5.25A.75.75 0 018 4.5z" /></svg> },
@@ -21,7 +25,7 @@ export default function EmployerLayout({ children }) {
 
   const handleLogout = () => {
     logout();
-    router.replace('/login');
+    window.location.replace('/login');
   };
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export default function EmployerLayout({ children }) {
           Hirely
         </Link>
         <div className="nav-links">
-          {NAV.slice(0, 5).map(n => (
+          {NAV.slice(0, 6).map(n => (
             <Link key={n.href} href={n.href} className={`nav-link ${pathname.startsWith(n.href) ? 'active' : ''}`} style={{ textDecoration: 'none' }}>
               {n.label}
             </Link>

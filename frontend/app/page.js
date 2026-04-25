@@ -13,7 +13,7 @@ export default function Root() {
       router.replace('/login');
       return;
     }
-    router.replace(user.role === 'employer' ? '/dashboard' : '/applicant/dashboard');
+    router.replace('/feed');
   }, [user, loading, router]);
 
   return (

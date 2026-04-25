@@ -123,12 +123,33 @@ export function StatusDot({ status }) {
 }
 
 /* ── AVATAR ── */
-export function Avatar({ name = '', size = 32, color = '#1e3a5f' }) {
+export function Avatar({ name = '', size = 32, color = '#1e3a5f', imageSrc = '' }) {
   const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   return (
-    <div className="avatar" style={{ width: size, height: size, background: color + '18', color, fontSize: size * 0.35, border: `1px solid ${color}30` }}>
-      {initials}
+    <div className="avatar" style={{ width: size, height: size, background: color + '18', color, fontSize: size * 0.35, border: `1px solid ${color}30`, overflow: 'hidden' }}>
+      {imageSrc ? <img src={imageSrc} alt={name || 'Profile'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
     </div>
+  );
+}
+
+export function MediaPreview({ post }) {
+  if (!post?.mediaUrl) return null;
+  if (post.mediaType === 'video') {
+    const extension = post.mediaUrl.split('.').pop().split('?')[0].toLowerCase();
+    const videoType = extension === 'mp4' ? 'video/mp4' : extension === 'webm' ? 'video/webm' : extension === 'ogg' ? 'video/ogg' : 'video/*';
+    return (
+      <video controls preload="metadata" className="post-media" poster={post.mediaPoster || undefined} crossOrigin="anonymous">
+        <source src={post.mediaUrl} type={videoType} />
+      </video>
+    );
+  }
+  if (post.mediaType === 'image') {
+    return <img src={post.mediaUrl} alt={post.mediaName || post.projectTitle || 'Shared media'} className="post-media" />;
+  }
+  return (
+    <a href={post.mediaUrl} target="_blank" rel="noreferrer" className="card-sm" style={{ display: 'block', textDecoration: 'none', color: 'var(--primary2)', marginBottom: 12 }}>
+      Open attachment: {post.mediaName || 'Document'}
+    </a>
   );
 }
 

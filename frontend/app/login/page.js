@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../lib/api';
 import { ThemeToggle } from '../../components/ui';
 
 export default function LoginPage() {
@@ -12,16 +13,73 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', company: '', jobTitle: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState('Enter your email and request a verification code.');
+  const [resendTimer, setResendTimer] = useState(0);
 
   const isSignedIn = Boolean(user);
-  const destination = user?.role === 'applicant' ? '/applicant/dashboard' : '/dashboard';
+  const destination = '/feed';
 
   const set = (k, v) => {
     setForm(f => ({ ...f, [k]: v }));
     setError('');
+    if (k === 'email' && v.trim().toLowerCase() !== form.email.trim().toLowerCase()) {
+      setVerificationSent(false);
+      setEmailVerified(false);
+      setVerificationCode('');
+      setVerificationMessage('Enter your email and request a verification code.');
+      setResendTimer(0);
+    }
   };
 
+  useEffect(() => {
+    if (!resendTimer) return undefined;
+    const timer = setInterval(() => setResendTimer(count => Math.max(0, count - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [resendTimer]);
+
   const clearForm = () => setForm({ name: '', email: '', password: '', confirm: '', company: '', jobTitle: '' });
+
+  const requestVerificationCode = async () => {
+    if (!form.email.trim()) {
+      setVerificationMessage('Please enter your email first.');
+      return;
+    }
+    setVerificationLoading(true);
+    setEmailVerified(false);
+    setError('');
+    try {
+      const response = await api.post('/auth/request-email-code', { email: form.email, purpose: 'register' });
+      setVerificationSent(true);
+      setVerificationMessage(response.message || 'Verification code sent.');
+      setResendTimer(60);
+    } catch (err) {
+      setVerificationMessage(err.message || 'Unable to send code.');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const confirmVerificationCode = async () => {
+    if (!verificationCode.trim() || verificationCode.trim().length !== 6) {
+      setError('Enter the 6-digit verification code.');
+      return;
+    }
+    setVerificationLoading(true);
+    setError('');
+    try {
+      const response = await api.post('/auth/verify-email-code', { email: form.email, purpose: 'register', code: verificationCode.trim() });
+      setEmailVerified(true);
+      setVerificationMessage(response.message || 'Email verified successfully.');
+    } catch (err) {
+      setError(err.message || 'Verification failed.');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -30,13 +88,28 @@ export default function LoginPage() {
       return;
     }
 
+    if (mode === 'register') {
+      if (!verificationSent) {
+        setError('Please request a verification code for your email first.');
+        return;
+      }
+      if (!emailVerified) {
+        setError('Please verify your email with the code sent to you.');
+        return;
+      }
+      if (form.password !== form.confirm) {
+        setError('Passwords do not match.');
+        return;
+      }
+    }
+
     setLoading(true);
     setError('');
 
     try {
       if (mode === 'login') {
         const u = await login(form.email, form.password, role);
-        router.replace(u.role === 'employer' ? '/dashboard' : '/applicant/dashboard');
+        router.replace('/feed');
       } else {
         if (form.password !== form.confirm) {
           setError('Passwords do not match.');
@@ -44,7 +117,7 @@ export default function LoginPage() {
           return;
         }
         const u = await register({ name: form.name, email: form.email, password: form.password, role, company: form.company, jobTitle: form.jobTitle });
-        router.replace(u.role === 'employer' ? '/dashboard' : '/applicant/dashboard');
+        router.replace('/feed');
       }
     } catch (err) {
       setError(err.message || 'Authentication failed.');
@@ -68,7 +141,10 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-panel">
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: 8, letterSpacing: '-.03em' }}>Hirely</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div className="nav-brand-mark" style={{ background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.12)' }}>H</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 700, color: '#fff', letterSpacing: '-.03em' }}>Hirely</div>
+          </div>
           <div style={{ fontSize: '.82rem', color: 'rgba(255,255,255,.58)', lineHeight: 1.7, maxWidth: 280, marginBottom: 48 }}>
             Executive-grade AI recruitment platform built for organisations that demand precision in every hire.
           </div>
@@ -124,7 +200,7 @@ export default function LoginPage() {
                     logout();
                     clearForm();
                     setError('');
-                    router.replace('/login');
+                    window.location.replace('/login');
                   }}
                 >
                   Sign out to switch account
@@ -193,7 +269,48 @@ export default function LoginPage() {
             <div className="form-group">
               <label className="form-label">Email address</label>
               <input className="input" type="email" required value={form.email} onChange={e => set('email', e.target.value)} placeholder="your@email.com" disabled={isSignedIn} />
+              {mode === 'register' && !isSignedIn ? (
+                <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={requestVerificationCode}
+                    disabled={verificationLoading || !form.email.trim() || resendTimer > 0}
+                  >
+                    {verificationLoading ? 'Sending...' : resendTimer > 0 ? `Resend in ${resendTimer}s` : verificationSent ? 'Resend code' : 'Send code'}
+                  </button>
+                  {emailVerified && <span style={{ color: '#4aa96c', fontWeight: 600 }}>Email verified</span>}
+                </div>
+              ) : null}
+              <div style={{ marginTop: 8, fontSize: '.78rem', color: emailVerified ? '#4aa96c' : '#999' }}>
+                {verificationMessage}
+              </div>
             </div>
+            {mode === 'register' && verificationSent && !emailVerified && !isSignedIn ? (
+              <div className="form-group">
+                <label className="form-label">Verification code</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode="numeric"
+                    value={verificationCode}
+                    onChange={e => setVerificationCode(e.target.value)}
+                    placeholder="6-digit code"
+                    maxLength={6}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={confirmVerificationCode}
+                    disabled={verificationLoading || verificationCode.trim().length !== 6}
+                  >
+                    {verificationLoading ? 'Checking...' : 'Verify'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="form-group">
               <label className="form-label">Password</label>
               <input className="input" type="password" required value={form.password} onChange={e => set('password', e.target.value)} placeholder="Minimum 6 characters" disabled={isSignedIn} />
@@ -207,7 +324,7 @@ export default function LoginPage() {
 
             {error && <div className="alert alert-error" style={{ marginBottom: 14 }}><span>!</span>{error}</div>}
 
-            <button type="submit" className="btn btn-primary btn-lg" disabled={loading || isSignedIn} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={loading || isSignedIn || (mode === 'register' && !emailVerified)} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
               {loading ? <span className="spinner" /> : null}
               {isSignedIn ? 'Sign out to change account' : mode === 'login' ? `Sign in as ${role === 'employer' ? 'Organisation' : 'Candidate'}` : 'Create account'}
             </button>
